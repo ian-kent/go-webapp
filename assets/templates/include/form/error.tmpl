@@ -1,0 +1,11 @@
+[:define "form_error":]
+  [: if .Errors :]
+    [: $n := (fnn .Label .Name) :]
+    <div class="text-danger">
+      [: if .Errors.required :][: $n :] is required[: end :]
+      [: if .Errors.email :][: $n :] must be a valid e-mail address[: end :]
+      [: if .Errors.max :][: $n :] must be less than [: .Errors.max.Param :] characters[: end :]
+      [: if .Errors.min :][: $n :] must be at least [: .Errors.min.Param :] characters[: end :]
+    </div>
+  [: end :]
+[:end :]

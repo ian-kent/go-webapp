@@ -1,0 +1,14 @@
+[: template "include/form" . :]
+
+<div class="container">
+  <div class="col-sm-offset-2">
+    <h1>Sign up</h1>
+    <p>Please complete the form.</p>
+  </div>
+
+  [: template "form_start" .Form :]
+    [: template "form_text" (ext .Form.Email "Label" "E-mail address" "Placeholder" "Enter your e-mail address" "Autofocus" true) :]
+    [: template "form_text" (ext .Form.Password "Label" "Password") :]
+    [: template "form_button" (map "Name" "submit" "Type" "submit" "Value" "Sign up") :]
+  [: template "form_end" .Form :]
+</div>

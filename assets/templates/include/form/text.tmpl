@@ -1,0 +1,12 @@
+[:define "form_text":]
+  <div class="form-group[: if .Errors :] has-error[: end :]">
+    [: if .Label :]
+      <label [: if .ID :]for="[: .ID :]"[: end :] class="col-sm-2 control-label">[: .Label :]</label>
+    [: end :]
+
+    <div class="col-sm-10">
+      <input [: if .Autofocus :]autofocus[: end :] type="[: if .Type :][: .Type :][: else :]text[: end :]" class="form-control" [: if .Name :]name="[: .Name :]"[: end :] [: if .ID :]id="[: .ID :]"[: end :] [: if .Placeholder :]placeholder="[: .Placeholder :]"[: end :] value="[: .Value :]">
+      [: template "form_error" . :]
+    </div>
+  </div>
+[:end:]

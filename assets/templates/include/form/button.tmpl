@@ -1,0 +1,7 @@
+[:define "form_button":]
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <button type="[: if .Type :][: .Type :][: else :]submit[: end :]" [: if .Name :]name="[: .Name :]"[: end :] class="btn btn-default">[: .Value :]</button>
+    </div>
+  </div>
+[:end:]

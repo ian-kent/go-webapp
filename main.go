@@ -2,69 +2,65 @@ package main
 
 import (
 	"log"
-	"mime"
 	"net/http"
-	"strings"
+	"time"
+
+	"github.com/ian-kent/go-webapp/config"
+	"github.com/ian-kent/go-webapp/handlers/home"
+	"github.com/ian-kent/go-webapp/handlers/static"
+	"github.com/ian-kent/go-webapp/handlers/timeout"
+	"github.com/ian-kent/go-webapp/handlers/user"
+	"github.com/ian-kent/go-webapp/logger"
+	"github.com/ian-kent/go-webapp/session"
 
 	"github.com/gorilla/pat"
-	"github.com/ian-kent/go-angularjs-jquery-bootstrap-boilerplate/assets"
-	"github.com/ian-kent/render"
+	"github.com/ian-kent/go-webapp/render"
+	"github.com/justinas/alice"
+	"github.com/justinas/nosurf"
 )
 
-type config struct {
-	BindAddr string
-}
-
-var r *render.Render
-var cfg config
-
 func main() {
-	cfg = config{
-		BindAddr: ":3123",
-	}
-
-	r = render.New(render.Options{
-		Asset:      assets.Asset,
-		AssetNames: assets.AssetNames,
-		Delims:     render.Delims{Left: "[:", Right: ":]"},
-		Layout:     "layout",
-	})
-
-	pat := pat.New()
-	pat.Path("/").Methods("GET").HandlerFunc(index)
-
-	for _, file := range assets.AssetNames() {
-		if strings.HasPrefix(file, "static/") {
-			path := strings.TrimPrefix(file, "static")
-
-			var mimeType string
-			switch {
-			case strings.HasSuffix(path, ".css"):
-				mimeType = "text/css"
-			case strings.HasSuffix(path, ".js"):
-				mimeType = "application/javascript"
-			default:
-				mimeType = mime.TypeByExtension(path)
-			}
-
-			pat.Path(path).Methods("GET").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				if b, err := assets.Asset("static" + path); err == nil {
-					w.Header().Set("Content-Type", mimeType)
-					w.WriteHeader(200)
-					w.Write(b)
-					return
-				}
-				w.WriteHeader(404)
-			})
-		}
-	}
-
-	err := http.ListenAndServe(cfg.BindAddr, pat)
+	cfg, err := config.Get()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error configuring app: %s", err)
+	}
+
+	// logging before this point must rely on setting LOGLEVEL env var
+	if l, err := logger.LevelFromString(cfg.LogLevel); err == nil {
+		logger.DefaultLevel = l
+	} else {
+		log.Fatalf("error setting log level: %s", err)
+	}
+
+	router := pat.New()
+	static.Register(router)
+	home.Register(router)
+	user.Register(router)
+
+	session.Init(cfg.SessionSecret, cfg.SessionName)
+
+	chain := alice.New(logger.Handler /*, context.ClearHandler*/, timeoutHandler, withCsrf).Then(router)
+
+	logger.Infof(nil, "listening on %s", cfg.BindAddr)
+	err = http.ListenAndServe(cfg.BindAddr, chain)
+	if err != nil {
+		log.Fatalf("error listening on %s: %s", cfg.BindAddr, err)
 	}
 }
 
-func index(w http.ResponseWriter, req *http.Request) {
-	r.HTML(w, http.StatusOK, "index", nil)
+func withCsrf(h http.Handler) http.Handler {
+	csrfHandler := nosurf.New(h)
+	csrfHandler.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		rsn := nosurf.Reason(req).Error()
+		logger.Warnf(req, "failed csrf validation: %s", rsn)
+		render.HTML(w, http.StatusBadRequest, "error", map[string]interface{}{"error": rsn})
+	}))
+	return csrfHandler
+}
+
+func timeoutHandler(h http.Handler) http.Handler {
+	return timeout.Handler(h, 1*time.Second, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		logger.Warnln(req, "request timed out")
+		render.HTML(w, http.StatusRequestTimeout, "error", map[string]interface{}{"error": "Request timed out"})
+	}))
 }

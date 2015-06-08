@@ -1,0 +1,12 @@
+[: template "include/form/error" :]
+[: template "include/form/text" :]
+[: template "include/form/button" :]
+
+[:define "form_start":]
+  <form action="" method="post" class="form-horizontal">
+    [: if ._CSRF :]<input type="hidden" name="[: ._CSRF.FieldName :]" value="[: ._CSRF.Token :]">[: end :]
+[:end:]
+
+[:define "form_end":]
+  </form>
+[:end:]
